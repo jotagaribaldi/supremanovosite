@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Suprema Consultoria em TI - Site Institucional com CMS
 
 Site profissional desenvolvido com **Next.js 14+ (App Router)**, **TypeScript**, **Tailwind CSS**, **Prisma ORM** e **PostgreSQL**, com painel administrativo completo para gerenciamento de conteúdo (CMS).
@@ -229,3 +230,6 @@ Projeto desenvolvido para a **Suprema Consultoria em TI**.
 ---
 
 **Suprema Consultoria em TI** - Transformando tecnologia em resultados reais.
+=======
+# supremanovosite
+>>>>>>> afab1c2ade68d276533a264182d3ff377cace618
