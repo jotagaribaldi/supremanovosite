@@ -1,0 +1,189 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String
+  role          Role      @default(ADMIN)
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  posts         Post[]
+
+  @@map("users")
+}
+
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String   @default("#3B82F6")
+  posts       Post[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  color     String   @default("#6B7280")
+  posts     PostTag[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("tags")
+}
+
+model Post {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  excerpt     String?
+  content     String     @db.Text
+  coverImage  String?
+  status      PostStatus @default(DRAFT)
+  publishedAt DateTime?
+  authorId    String
+  author      User       @relation(fields: [authorId], references: [id])
+  categoryId  String?
+  category    Category?  @relation(fields: [categoryId], references: [id])
+  tags        PostTag[]
+  seoTitle    String?
+  seoDesc     String?
+  views       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([status])
+  @@index([publishedAt])
+  @@index([slug])
+  @@map("posts")
+}
+
+model PostTag {
+  postId String @map("post_id")
+  tagId  String @map("tag_id")
+  post   Post   @relation(fields: [postId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([postId, tagId])
+  @@map("post_tags")
+}
+
+model Service {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  shortDesc   String
+  fullDesc    String   @db.Text
+  icon        String
+  features    String[]
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  seoTitle    String?
+  seoDesc     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("services")
+}
+
+model Portfolio {
+  id          String   @id @default(cuid())
+  title       String
+  slug        String   @unique
+  client      String
+  description String   @db.Text
+  shortDesc   String
+  image       String
+  gallery     String[]
+  technologies String[]
+  category    String
+  projectUrl  String?
+  isFeatured  Boolean  @default(false)
+  order       Int      @default(0)
+  isActive    Boolean  @default(true)
+  seoTitle    String?
+  seoDesc     String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("portfolios")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String
+  phone     String?
+  company   String?
+  subject   String
+  message   String   @db.Text
+  status    ContactStatus @default(NEW)
+  ip        String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("contacts")
+}
+
+model SiteSettings {
+  id                String   @id @default("singleton")
+  siteName          String   @default("Suprema Consultoria em TI")
+  siteDescription   String   @default("Consultoria especializada em TI: desenvolvimento, segurança, cloud e infraestrutura.")
+  siteUrl           String   @default("https://suprema-ti.com.br")
+  logo              String   @default("/logo.png")
+  favicon           String   @default("/favicon.ico")
+  primaryColor      String   @default("#1E3A5F")
+  secondaryColor    String   @default("#0077B6")
+  accentColor       String   @default("#00B4D8")
+  contactEmail      String   @default("contato@suprema-ti.com.br")
+  contactPhone      String   @default("(XX) XXXX-XXXX")
+  contactAddress    String   @default("Sua Cidade, Estado")
+  whatsappNumber    String   @default("55XXXXXXXXXXX")
+  linkedinUrl       String?
+  githubUrl         String?
+  instagramUrl      String?
+  facebookUrl       String?
+  twitterUrl        String?
+  googleAnalyticsId String?
+  metaPixelId       String?
+  maintenanceMode   Boolean  @default(false)
+  updatedAt         DateTime @updatedAt
+
+  @@map("site_settings")
+}
+
+enum Role {
+  ADMIN
+  EDITOR
+}
+
+enum PostStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum ContactStatus {
+  NEW
+  READ
+  REPLIED
+  SPAM
+}
