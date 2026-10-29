@@ -1,36 +1,116 @@
-version: '3.8'
+# docker-compose.yml - Produção com aaPanel
+# Uso: docker compose -f docker-compose.yml up -d
 
 services:
+  # ============================================
+  # PostgreSQL 16 - Banco de dados principal
+  # ============================================
   postgres:
     image: postgres:16-alpine
-    container_name: suprema-ti-db
+    container_name: suprema-db
+    restart: unless-stopped
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: suprema_ti
-    ports:
-      - "5432:5432"
+      POSTGRES_USER: ${DB_USER:-suprema}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-senha_forte_aqui}
+      POSTGRES_DB: ${DB_NAME:-suprema_ti}
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-suprema} -d ${DB_NAME:-suprema_ti}"]
+      interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+    networks:
+      - suprema-network
 
+  # ============================================
+  # Redis 7 - Cache, sessões, filas
+  # ============================================
   redis:
     image: redis:7-alpine
-    container_name: suprema-ti-redis
-    ports:
-      - "6379:6379"
+    container_name: suprema-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
+      interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - suprema-network
+
+  # ============================================
+  # Next.js App - Aplicação principal
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: suprema-app
+    restart: unless-stopped
+    environment:
+      # Banco de dados
+      DATABASE_URL: postgresql://${DB_USER:-suprema}:${DB_PASSWORD:-senha_forte_aqui}@postgres:5432/${DB_NAME:-suprema_ti}?schema=public
+      
+      # NextAuth
+      NEXTAUTH_URL: ${NEXTAUTH_URL:-https://suprema.eti.br}
+      NEXTAUTH_SECRET: ${NEXTAUTH_SECRET:-gere_uma_chave_segura_com_openssl_rand_base64_32}
+      
+      # App
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://suprema.eti.br}
+      NEXT_PUBLIC_SITE_NAME: "Suprema Consultoria em TI"
+      
+      # Redis (opcional - para cache/sessões futuras)
+      REDIS_URL: redis://redis:6379
+      
+      # Node
+      NODE_ENV: production
+      PORT: 3000
+      HOSTNAME: "0.0.0.0"
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - suprema-network
+    # Logs
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # ============================================
+  # Nginx Reverse Proxy (OPCIONAL - se não usar aaPanel proxy)
+  # ============================================
+  # nginx:
+  #   image: nginx:alpine
+  #   container_name: suprema-nginx
+  #   restart: unless-stopped
+  #   ports:
+  #     - "80:80"
+  #     - "443:443"
+  #   volumes:
+  #     - ./nginx.conf:/etc/nginx/nginx.conf:ro
+  #     - ./certs:/etc/nginx/certs:ro
+  #   depends_on:
+  #     - app
+  #   networks:
+  #     - suprema-network
 
 volumes:
   postgres_data:
+    driver: local
   redis_data:
+    driver: local
+
+networks:
+  suprema-network:
+    driver: bridge
